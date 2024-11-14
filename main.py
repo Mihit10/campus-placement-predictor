@@ -11,7 +11,15 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 import matplotlib.pyplot as plt
 import seaborn as sns
 from time import sleep
+import base64
 pd.set_option('future.no_silent_downcasting', True)
+
+# Function to load a local image and convert it to base64
+def load_image(image_file):
+    with open(image_file, "rb") as f:
+        data = f.read()
+    return base64.b64encode(data).decode()
+
 
 evaluation_mat = {"Mean Squared Error" : 77.304,
                 "Mean Absolute Error" : 5.760,
@@ -260,7 +268,7 @@ def info_tab():
     ### **Why Gradient Boosting?**
     To select the most accurate and reliable model, I evaluated multiple algorithms, including **Random Forest**, **Support Vector Regression (SVR)**, **K-Nearest Neighbors (KNN)**, **Decision Tree**, and **Linear Regression**. Each model was tested on essential evaluation metrics: **Mean Absolute Error (MAE)**, **Mean Squared Error (MSE)**, **R-squared**, and **Cross-Validation MSE**. Among these, **Gradient Boosting** performed the best, delivering the lowest MSE and a higher R-squared score compared to other models, indicating greater accuracy and consistency. Here’s a brief comparison:
 
-    - **Gradient Boosting**: Cross-validation MSE of 76.091, MAE of 5.847, and R-squared of 0.671
+    - **Gradient Boosting**: Cross-validation MSE of {evaluation_mat['Mean Squared Error']:.3f}, MAE of {evaluation_mat['Mean Absolute Error']:.3f}, and R-squared of {evaluation_mat['R-squared']:.3f}
     - **Random Forest**: Cross-validation MSE of 78.943, MAE of 5.986, and R-squared of 0.653
     - **Support Vector Regression, KNN, Decision Tree,** and **Linear Regression** models had significantly higher MSE and lower R-squared scores, showing lesser predictive power for this dataset.
 
@@ -286,6 +294,22 @@ def info_tab():
 
 
 def main():
+
+    image_path = "Index Background Design.jpeg"
+    image_base64 = load_image(image_path)
+
+    st.markdown(
+        f"""
+        <style>
+        .reportview-container {{
+            background: url(data:image/jpeg;base64,{image_base64}) no-repeat center center fixed; 
+            background-size: cover;
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
     # Create tabs
     tabs = st.tabs(["Model", "Info"])
 
