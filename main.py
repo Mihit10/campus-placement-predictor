@@ -11,14 +11,7 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 import matplotlib.pyplot as plt
 import seaborn as sns
 from time import sleep
-import base64
 pd.set_option('future.no_silent_downcasting', True)
-
-# Function to load a local image and convert it to base64
-def load_image(image_file):
-    with open(image_file, "rb") as f:
-        data = f.read()
-    return base64.b64encode(data).decode()
 
 
 evaluation_mat = {"Mean Squared Error" : 77.304,
@@ -66,8 +59,7 @@ def input_and_ml():
         age_of_candidate = st.number_input("Age of Candidate", min_value=1, max_value=120, value=None, step=1, format="%d")
         cgpa = st.number_input("CGPA", min_value=0.0, max_value=10.0, format="%.2f", value=None)
         num_dsa_questions = st.number_input("No. of DSA questions", min_value=0, value=None)
-        num_backlogs = st.number_input("No. of backlogs", min_value=0, value=None)
-
+        num_backlogs = st.number_input("No. of backlogs", min_value=0, max_value=5, value=None)
         if set_none:
             interview_room_temp = st.slider("Interview Room Temperature (°C)",min_value=10.0, max_value=40.0, value=22.0, step=0.1, format="%.1f")
         else:
@@ -294,22 +286,6 @@ def info_tab():
 
 
 def main():
-
-    image_path = "Index Background Design.jpeg"
-    image_base64 = load_image(image_path)
-
-    st.markdown(
-        f"""
-        <style>
-        .reportview-container {{
-            background: url(data:image/jpeg;base64,{image_base64}) no-repeat center center fixed; 
-            background-size: cover;
-        }}
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
-
     # Create tabs
     tabs = st.tabs(["Model", "Info"])
 
