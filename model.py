@@ -9,7 +9,20 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 import joblib
 import matplotlib.pyplot as plt
 import seaborn as sns
+import json
 pd.set_option('future.no_silent_downcasting', True)
+
+def save_evaluation_metrics(metrics, filename='evaluation_metrics.json'):
+    with open(filename, 'w') as f:
+        json.dump(metrics, f)
+
+evaluation_mat = {"Mean Squared Error" : 77.304,
+                "Mean Absolute Error" : 5.760,
+                "R-squared" : 0.681,
+                "Cross-validated MSE" : 76.772,
+                "Bias Squared": 0.011,
+                "Variance": 165.81}
+
 
 def load_and_preprocess_data():
     dataset = pd.read_csv("Placements_Dataset.csv")
@@ -50,12 +63,15 @@ def load_and_preprocess_data():
 
 
 def train_model(X, y):
-    
+    global evaluation_mat
     # Missing values
     imputer_mode = SimpleImputer(missing_values=np.nan, strategy='most_frequent')
     imputer_mean = SimpleImputer(missing_values=np.nan, strategy='mean')
     imputer_mode.fit(X[:, 2:12])
     imputer_mean.fit(X[:, [0, 1, 12, 13, 14]])
+    joblib.dump(imputer_mode, 'imp_mode.joblib')
+    joblib.dump(imputer_mean, 'imp_mean.joblib')
+    
     
     # one hot encoding
     ct = ColumnTransformer(transformers=[('encoder', OneHotEncoder(), [15])], remainder='passthrough')
@@ -114,24 +130,39 @@ def train_model(X, y):
     mae = mean_absolute_error(y_test, y_pred)
     r2 = r2_score(y_test, y_pred)
     bias_squared = (np.mean(y_test) - np.mean(y_pred)) ** 2
+    bias_squared_formatted = f"{1000000 * bias_squared:.3f} x 10^-6"
+
     variance = np.var(y_pred)
     cv_scores = cross_val_score(best_gbr, X_train, y_train, cv=5, scoring='neg_mean_squared_error')
 
-    evaluation_mat = {"Mean Squared Error" : mse,
-                    "Mean Absolute Error" : mae,
-                    "R-squared" : r2,
-                    "Cross-validated MSE" : -np.mean(cv_scores),
-                    "Bias Squared": bias_squared,
-                    "Variance": variance}
+    evaluation_mat = {"Mean Squared Error" : float(mse),
+                    "Mean Absolute Error" : float(mae),
+                    "R-squared" : float(r2),
+                    "Cross-validated MSE" : float(-np.mean(cv_scores)),
+                    "Bias Squared": str(bias_squared_formatted),
+                    "Variance": float(variance)}
+
+    import matplotlib.pyplot as plt
+
+    feature_importances = best_gbr.feature_importances_
+    plt.barh(range(len(feature_importances)), feature_importances)
+    plt.xlabel('Feature Importance')
+    plt.ylabel('Feature Index')
+    plt.title('Feature Importance from Gradient Boosting')
+    plt.show()
 
     # Save the model
     joblib.dump(best_gbr, 'placement_model.joblib')
 
     return evaluation_mat
 
+
 def main():
+    save_evaluation_metrics(evaluation_mat)
     X, y = load_and_preprocess_data()
     evaluation_metrics = train_model(X, y)
+    save_evaluation_metrics(evaluation_metrics)
+
     # print(X[0])
     print(evaluation_metrics)
     return evaluation_metrics

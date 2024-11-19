@@ -11,37 +11,45 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 import matplotlib.pyplot as plt
 import seaborn as sns
 from time import sleep
+from joblib import load
+import json
 pd.set_option('future.no_silent_downcasting', True)
 
+def load_evaluation_metrics(filename='evaluation_metrics.json'):
+    with open(filename, 'r') as f:
+        metrics = json.load(f)
+    return metrics
 
-evaluation_mat = {"Mean Squared Error" : 77.304,
-                "Mean Absolute Error" : 5.760,
-                "R-squared" : 0.681,
-                "Cross-validated MSE" : 76.772,
-                "Bias Squared": 0.011,
-                "Variance": 165.81}
+# evaluation_mat = {"Mean Squared Error" : 77.304,
+#                 "Mean Absolute Error" : 5.760,
+#                 "R-squared" : 0.681,
+#                 "Cross-validated MSE" : 76.772,
+#                 "Bias Squared": 0.011,
+#                 "Variance": 165.81}
 
-def load_and_preprocess_data():
-    dataset = pd.read_csv("Placements_Dataset.csv")
-    dataset = dataset.iloc[:50000, :]
-    dataset = dataset.drop(columns=['Name of Student', 'Roll No.'])
-    dataset = dataset.dropna()
-    yes_no_columns = ['Knows ML', 'Knows DSA', 'Knows Python', 'Knows JavaScript', 
-                      'Knows HTML', 'Knows CSS', 'Knows Cricket', 'Knows Dance', 
-                      'Participated in College Fest', 'Was in Coding Club']
-    dataset[yes_no_columns] = dataset[yes_no_columns].replace({'Yes': 1, 'No': 0})
-    Q1 = dataset['Placement Package'].quantile(0.25)
-    Q3 = dataset['Placement Package'].quantile(0.75)
-    IQR = Q3 - Q1
-    # Filtering out the outliers
-    dataset = dataset[~((dataset['Placement Package'] < (Q1 - 1.5 * IQR)) | (dataset['Placement Package'] > (Q3 + 1.5 * IQR)))]
-    y = dataset.iloc[:, -1].values
-    X = dataset.iloc[:, :-1].values
-    return X, y
+# def load_and_preprocess_data():
+#     dataset = pd.read_csv("Placements_Dataset.csv")
+#     dataset = dataset.iloc[:50000, :]
+#     dataset = dataset.drop(columns=['Name of Student', 'Roll No.'])
+#     dataset = dataset.dropna()
+#     yes_no_columns = ['Knows ML', 'Knows DSA', 'Knows Python', 'Knows JavaScript', 
+#                       'Knows HTML', 'Knows CSS', 'Knows Cricket', 'Knows Dance', 
+#                       'Participated in College Fest', 'Was in Coding Club']
+#     dataset[yes_no_columns] = dataset[yes_no_columns].replace({'Yes': 1, 'No': 0})
+#     Q1 = dataset['Placement Package'].quantile(0.25)
+#     Q3 = dataset['Placement Package'].quantile(0.75)
+#     IQR = Q3 - Q1
+#     # Filtering out the outliers
+#     dataset = dataset[~((dataset['Placement Package'] < (Q1 - 1.5 * IQR)) | (dataset['Placement Package'] > (Q3 + 1.5 * IQR)))]
+#     y = dataset.iloc[:, -1].values
+#     X = dataset.iloc[:, :-1].values
+#     return X, y
+gbr_model = load('placement_model.joblib')
+evaluation_mat = load_evaluation_metrics()
 
 def input_and_ml():
-    X, y = load_and_preprocess_data()
-    global evaluation_mat
+    # X, y = load_and_preprocess_data()
+    
     st.title("Campus Placement Predictor ")
     st.markdown("**Welcome to Campus Placement Predictor**  \nEnter some information about you to get an estimate about you annual package which you can expect!!!")
 
@@ -149,20 +157,23 @@ def input_and_ml():
             progressBar.progress(10, "Handling missing values...")
             sleep(0.5)
             # Handling null values 
-            imputer_mode = SimpleImputer(missing_values=np.nan, strategy='most_frequent')
-            imputer_mean = SimpleImputer(missing_values=np.nan, strategy='mean')
-            imputer_mode.fit(X[:, 2:12])
-            imputer_mean.fit(X[:, [0, 1, 12, 13, 14]])
+            mean_imp = load('imp_mean.joblib')
+            mode_imp = load('imp_mode.joblib')
+            
+            # imputer_mode = SimpleImputer(missing_values=np.nan, strategy='most_frequent')
+            # imputer_mean = SimpleImputer(missing_values=np.nan, strategy='mean')
+            # imputer_mode.fit(X[:, 2:12])
+            # imputer_mean.fit(X[:, [0, 1, 12, 13, 14]])
             x_values = np.where(x_values == None, np.nan, x_values)
-            x_values[:, 2:12] = imputer_mode.transform(x_values[:, 2:12])
-            x_values[:, [0, 1, 12, 13, 14]] = imputer_mean.transform(x_values[:, [0, 1, 12, 13, 14]])
+            x_values[:, 2:12] = mode_imp.transform(x_values[:, 2:12])
+            x_values[:, [0, 1, 12, 13, 14]] = mean_imp.transform(x_values[:, [0, 1, 12, 13, 14]])
 
             progressBar.progress(20, "Encoding data...")
             sleep(0.5)
 
             # one hot encoding of dataset and input
-            ct = ColumnTransformer(transformers=[('encoder', OneHotEncoder(), [15])], remainder='passthrough')
-            X = np.array(ct.fit_transform(X))
+            # ct = ColumnTransformer(transformers=[('encoder', OneHotEncoder(), [15])], remainder='passthrough')
+            # X = np.array(ct.fit_transform(X))
             last_column = x_values[0, -1]
             if last_column in encoding_dict:
                 one_hot_encoded = np.array(encoding_dict[last_column])
@@ -175,18 +186,21 @@ def input_and_ml():
 
             # feature scaling
                 # on X
-            x_values = x_values.astype(float)
+            # x_values = x_values.astype(float)
             columns_to_scale = [4, 5, 16, 17, 18]
-            sc = StandardScaler()
-            X_to_scale = X[:, columns_to_scale]
-            X_rest = np.delete(X, columns_to_scale, axis=1)
-            X_scaled = sc.fit_transform(X_to_scale)
-            X[:, columns_to_scale] = X_scaled
+            # sc = StandardScaler()
+            # X_to_scale = X[:, columns_to_scale]
+            # X_rest = np.delete(X, columns_to_scale, axis=1)
+            # X_scaled = sc.fit_transform(X_to_scale)
+            # X[:, columns_to_scale] = X_scaled
                 # on input
-            x_values_to_scale = x_values[:, columns_to_scale]
-            x_values_rest = np.delete(x_values, columns_to_scale, axis=1)
-            x_values_scaled = sc.transform(x_values_to_scale)
-            x_values[:, columns_to_scale] = x_values_scaled
+            
+            # x_values_to_scale = x_values[:, columns_to_scale]
+            # x_values_rest = np.delete(x_values, columns_to_scale, axis=1)
+            # x_values_scaled = sc.transform(x_values_to_scale)
+            # x_values[:, columns_to_scale] = x_values_scaled
+            scale_x = load('x_scaler.joblib')
+            x_values[:, columns_to_scale] = scale_x.transform(x_values[:, columns_to_scale])
 
 
             # print("input - ", x_values[0])
@@ -195,50 +209,53 @@ def input_and_ml():
             progressBar.progress(50, "Creating ML algorithm...")
             sleep(0.2)
             # gradient boosting 
-            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.20, random_state = 42)
+            # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.20, random_state = 42)
 
 
             progressBar.progress(70, "Calculating values...")
 
             #test
-            best_gbr = GradientBoostingRegressor(n_estimators=100, learning_rate=0.1, max_features=5, random_state=100)
-            best_gbr.fit(X_train, y_train)
+            # best_gbr = GradientBoostingRegressor(n_estimators=100, learning_rate=0.1, max_features=5, random_state=100)
+            # best_gbr.fit(X_train, y_train)
 
-            y_pred = best_gbr.predict(X_test)
-            y_train_pred = best_gbr.predict(X_train)
+            # y_pred = best_gbr.predict(X_test)
+            # y_train_pred = best_gbr.predict(X_train)
 
-            mse = mean_squared_error(y_test, y_pred)
-            mse_train = mean_squared_error(y_train, y_train_pred)
+            # mse = mean_squared_error(y_test, y_pred)
+            # mse_train = mean_squared_error(y_train, y_train_pred)
 
-            bias_squared = (np.mean(y_test) - np.mean(y_pred)) ** 2
-            variance = np.var(y_pred)
+            # bias_squared = (np.mean(y_test) - np.mean(y_pred)) ** 2
+            # variance = np.var(y_pred)
 
-            mae = mean_absolute_error(y_test, y_pred)
-            r2 = r2_score(y_test, y_pred)
-            cv_scores = cross_val_score(best_gbr, X_train, y_train, cv=5, scoring='neg_mean_squared_error')
+            # mae = mean_absolute_error(y_test, y_pred)
+            # r2 = r2_score(y_test, y_pred)
+            # cv_scores = cross_val_score(best_gbr, X_train, y_train, cv=5, scoring='neg_mean_squared_error')
+
+            # st.write(evaluation_mat)
 
             progressBar.progress(85, "Almost there...")
             sleep(0.2)
 
-            evaluation_mat = {"Mean Squared Error" : mse,
-                            "Mean Absolute Error" : mae,
-                            "R-squared" : r2,
-                            "Cross-validated MSE" : -np.mean(cv_scores),
-                            "Bias Squared": bias_squared,
-                            "Variance": variance}
+            # evaluation_mat = {"Mean Squared Error" : mse,
+            #                 "Mean Absolute Error" : mae,
+            #                 "R-squared" : r2,
+            #                 "Cross-validated MSE" : -np.mean(cv_scores),
+            #                 "Bias Squared": bias_squared,
+            #                 "Variance": variance}
             
-
-            st.write(f'Mean Squared Error: {mse}')
-            st.write(f'Mean Absolute Error: {mae}')
-            st.write(f'R-squared: {r2}')
-            st.write(f'Cross-validated MSE: {-np.mean(cv_scores)}')
-            st.write(f'Bias Squared: {bias_squared}')
-            st.write(f'Variance: {variance}')
+            # st.write(f'Mean Squared Error: {mse}')
+            # st.write(f'Mean Absolute Error: {mae}')
+            # st.write(f'R-squared: {r2}')
+            # st.write(f'Cross-validated MSE: {-np.mean(cv_scores)}')
+            # st.write(f'Bias Squared: {bias_squared}')
+            # st.write(f'Variance: {variance}')
 
             progressBar.progress(100, "DONE!!!...")
 
             # Predicting Value 
-            predicted_y = best_gbr.predict(x_values)
+            scale_y = load("y_scaler.joblib")
+            predicted_y = gbr_model.predict(x_values)
+            predicted_y = scale_y.inverse_transform(predicted_y.reshape(-1, 1)).flatten()
             predicted_y = np.round(predicted_y, 2)
             pred_package = predicted_y[0]
 
@@ -248,7 +265,7 @@ def input_and_ml():
             st.markdown(f"<h1 style='text-align: center; color: green;'>{pred_package} LPA</h1>", unsafe_allow_html=True)
 
             # Display the warning message in smaller text
-            st.markdown(f"<p style='text-align: center; color: red; font-size: 14px;'>The values calculated can/may contain an error margin of ± {mae:.2f}.</p>", unsafe_allow_html=True)
+            st.markdown(f"<p style='text-align: center; color: red; font-size: 14px;'>The values calculated can/may contain an error margin of ± {evaluation_mat['Mean Absolute Error']:.2f}.</p>", unsafe_allow_html=True)
 
 def info_tab():
     st.title("Model Information")
@@ -275,7 +292,7 @@ def info_tab():
     - **Mean Absolute Error (MAE)**: `{evaluation_mat['Mean Absolute Error']:.3f}` - reflects the average absolute difference, providing insight into prediction accuracy.
     - **R-squared**: `{evaluation_mat['R-squared']:.3f}` - shows the proportion of variance explained by the model, with a value closer to 1 indicating better fit.
     - **Cross-validated MSE**: `{evaluation_mat['Cross-validated MSE']:.3f}` - confirms model consistency and generalizability across multiple folds.
-    - **Bias Squared**: `{evaluation_mat['Bias Squared']:.3f}` - captures model accuracy relative to the true data.
+    - **Bias Squared**: `{evaluation_mat['Bias Squared']}` - captures model accuracy relative to the true data.
     - **Variance**: `{evaluation_mat['Variance']:.3f}` - reflects the model’s ability to adapt to the data without overfitting.
 
     These metrics underscore the model’s effectiveness, with a low bias and a high R-squared, suggesting it accurately predicts placement packages with minimal error. The low variance also highlights its robustness across different samples, making it a dependable tool for real-world applications.
