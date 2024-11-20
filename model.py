@@ -16,12 +16,12 @@ def save_evaluation_metrics(metrics, filename='evaluation_metrics.json'):
     with open(filename, 'w') as f:
         json.dump(metrics, f)
 
-evaluation_mat = {"Mean Squared Error" : 77.304,
-                "Mean Absolute Error" : 5.760,
-                "R-squared" : 0.681,
-                "Cross-validated MSE" : 76.772,
-                "Bias Squared": 0.011,
-                "Variance": 165.81}
+evaluation_mat = {"Mean Squared Error" : 2.596,
+                "Mean Absolute Error" : 0.585,
+                "R-squared" : 0.942,
+                "Cross-validated MSE" : 0.0595,
+                "Bias Squared": '90.821 x 10^-6',
+                "Variance":  42.152}
 
 
 def load_and_preprocess_data():
