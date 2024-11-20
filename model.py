@@ -25,7 +25,7 @@ evaluation_mat = {"Mean Squared Error" : 77.304,
 
 
 def load_and_preprocess_data():
-    dataset = pd.read_csv("Optimized_Placement_Dataset_with_Noise.csv")
+    dataset = pd.read_csv("Placement_dataset.csv")
     # dataset = dataset.iloc[:50000, :]
     dataset = dataset.drop(columns=['Name of Student', 'Roll No.'])
     # dataset = dataset.dropna()
@@ -43,28 +43,18 @@ def load_and_preprocess_data():
     Q3 = dataset['Placement Package'].quantile(0.75)
     IQR = Q3 - Q1
     dataset = dataset[~((dataset['Placement Package'] < (Q1 - 1.5 * IQR)) | (dataset['Placement Package'] > (Q3 + 1.5 * IQR)))]
-    # print(f"Count of zeros in the 'Placement Package' column: {(dataset['Placement Package'] == 0).sum()}")
+    
+    # splitting data
     y = dataset.iloc[:, -1].values  # Target variable
     X = dataset.iloc[:, :-1].values  # Features
-
-    # # Set the style of seaborn
-    # sns.set(style="whitegrid")
-
-    # # Create a histogram
-    # plt.figure(figsize=(10, 6))
-    # sns.histplot(dataset['Placement Package'], bins=20, kde=True)  # kde=True adds a kernel density estimate
-    # plt.title('Distribution of Placement Package')
-    # plt.xlabel('Placement Package')
-    # plt.ylabel('Frequency')
-    # plt.show()
-
     
     return X, y
 
 
 def train_model(X, y):
     global evaluation_mat
-    # Missing values
+
+    # Handling Missing values
     imputer_mode = SimpleImputer(missing_values=np.nan, strategy='most_frequent')
     imputer_mean = SimpleImputer(missing_values=np.nan, strategy='mean')
     imputer_mode.fit(X[:, 2:12])
@@ -86,52 +76,31 @@ def train_model(X, y):
     # Train-test split
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.20, random_state = 42)
 
-    # Step 2: Scale features
+    # Feature Scaling X values
     columns_to_scale = [4, 5, 16, 17, 18]  # Adjust based on your feature indices
     xsc = StandardScaler()
     X_train[:, columns_to_scale] = xsc.fit_transform(X_train[:, columns_to_scale])
     X_test[:, columns_to_scale] = xsc.transform(X_test[:, columns_to_scale])
     joblib.dump(xsc, 'x_scaler.joblib')
 
-    # Step 3: Scale target variable
+    # Feature Scaling Y value
     ysc = StandardScaler()
-    y_train = ysc.fit_transform(y_train.reshape(-1, 1)).flatten()  # Flatten to 1D
-    y_test = ysc.transform(y_test.reshape(-1, 1)).flatten()  # Flatten to 1D
+    y_train = ysc.fit_transform(y_train.reshape(-1, 1)).flatten()  
+    y_test = ysc.transform(y_test.reshape(-1, 1)).flatten()  
     joblib.dump(ysc, 'y_scaler.joblib')
 
-    # Step 4: Train the model
+    # Training the model
     best_gbr = GradientBoostingRegressor(n_estimators=80, min_samples_split=10, min_samples_leaf=4, max_depth=3, learning_rate=0.1, max_features=None, random_state=100)
-    best_gbr.fit(X_train, y_train)  # y_train is now 1D
+    best_gbr.fit(X_train, y_train) 
 
-    # Step 5: Make predictions
+    # Predicting Y 
     y_pred_scaled = best_gbr.predict(X_test)
 
-
-    # train_scores = []
-    # val_scores = []
-
-    # for n_estimators in range(50, 200, 2):
-    #     best_gbr.n_estimators = n_estimators
-    #     best_gbr.fit(X_train, y_train)
-    #     train_scores.append(mean_squared_error(y_train, best_gbr.predict(X_train)))
-    #     val_scores.append(mean_squared_error(y_test, best_gbr.predict(X_test)))
-    #     print(train_scores[-1], n_estimators)
-
-    # # Plot the training and validation scores
-    # import matplotlib.pyplot as plt
-
-    # plt.plot(range(50, 200, 2), train_scores, label='Training MSE')
-    # plt.plot(range(50, 200, 2), val_scores, label='Validation MSE')
-    # plt.xlabel('Number of Estimators')
-    # plt.ylabel('Mean Squared Error')
-    # plt.legend()
-    # plt.show()
-
-    # Step 6: Inverse transform the predictions to get them back to the original scale
+    # Inverse transform the predictions to get them back to the original scale
     y_pred = ysc.inverse_transform(y_pred_scaled.reshape(-1, 1)).flatten() 
     y_test = ysc.inverse_transform(y_test.reshape(-1, 1)).flatten()
 
-    # Evaluation metrics
+    # Calculation of Evaluation metrics
     mse = mean_squared_error(y_test, y_pred)
     mae = mean_absolute_error(y_test, y_pred)
     r2 = r2_score(y_test, y_pred)
@@ -148,17 +117,9 @@ def train_model(X, y):
                     "Bias Squared": str(bias_squared_formatted),
                     "Variance": float(variance)}
 
-    # import matplotlib.pyplot as plt
-
-    # feature_importances = best_gbr.feature_importances_
-    # plt.barh(range(len(feature_importances)), feature_importances)
-    # plt.xlabel('Feature Importance')
-    # plt.ylabel('Feature Index')
-    # plt.title('Feature Importance from Gradient Boosting')
-    # plt.show()
-
-    # Save the model
+    # Save the model as a joblib file
     joblib.dump(best_gbr, 'placement_model.joblib')
+    print("Model saved successfully")
 
     return evaluation_mat
 
@@ -166,12 +127,10 @@ def train_model(X, y):
 def main():
     save_evaluation_metrics(evaluation_mat)
     X, y = load_and_preprocess_data()
-    print("Shape of X before prediction:", X.shape)
 
     evaluation_metrics = train_model(X, y)
     save_evaluation_metrics(evaluation_metrics)
 
-    # print(X[0])
     print(evaluation_metrics)
     return evaluation_metrics
 

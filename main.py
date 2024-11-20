@@ -1,13 +1,6 @@
 import pandas as pd
 import numpy as np
 import streamlit as st
-from sklearn.impute import SimpleImputer
-from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import LabelEncoder, OneHotEncoder, StandardScaler
-from sklearn.ensemble import GradientBoostingRegressor
-from sklearn.model_selection import GridSearchCV
-from sklearn.model_selection import train_test_split, cross_val_score
-from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 import matplotlib.pyplot as plt
 import seaborn as sns
 from time import sleep
@@ -15,49 +8,26 @@ from joblib import load
 import json
 pd.set_option('future.no_silent_downcasting', True)
 
-
-
 def load_evaluation_metrics(filename='evaluation_metrics.json'):
     with open(filename, 'r') as f:
         metrics = json.load(f)
     return metrics
 
-# evaluation_mat = {"Mean Squared Error" : 77.304,
-#                 "Mean Absolute Error" : 5.760,
-#                 "R-squared" : 0.681,
-#                 "Cross-validated MSE" : 76.772,
-#                 "Bias Squared": 0.011,
-#                 "Variance": 165.81}
-
-# def load_and_preprocess_data():
-#     dataset = pd.read_csv("Placements_Dataset.csv")
-#     dataset = dataset.iloc[:50000, :]
-#     dataset = dataset.drop(columns=['Name of Student', 'Roll No.'])
-#     dataset = dataset.dropna()
-#     yes_no_columns = ['Knows ML', 'Knows DSA', 'Knows Python', 'Knows JavaScript', 
-#                       'Knows HTML', 'Knows CSS', 'Knows Cricket', 'Knows Dance', 
-#                       'Participated in College Fest', 'Was in Coding Club']
-#     dataset[yes_no_columns] = dataset[yes_no_columns].replace({'Yes': 1, 'No': 0})
-#     Q1 = dataset['Placement Package'].quantile(0.25)
-#     Q3 = dataset['Placement Package'].quantile(0.75)
-#     IQR = Q3 - Q1
-#     # Filtering out the outliers
-#     dataset = dataset[~((dataset['Placement Package'] < (Q1 - 1.5 * IQR)) | (dataset['Placement Package'] > (Q3 + 1.5 * IQR)))]
-#     y = dataset.iloc[:, -1].values
-#     X = dataset.iloc[:, :-1].values
-#     return X, y
 gbr_model = load('placement_model.joblib')
 evaluation_mat = load_evaluation_metrics()
 
 def getGraphs():
-    dataset = pd.read_csv("Optimized_Placement_Dataset_with_Noise.csv")
+    dataset = pd.read_csv("Placement_dataset.csv")
     yes_no_columns = [
         'Knows ML', 'Knows DSA', 'Knows Python', 'Knows JavaScript', 
         'Knows HTML', 'Knows CSS', 'Knows Cricket', 'Knows Dance', 
         'Participated in College Fest', 'Was in Coding Club'
     ]
+
+    # encoding yes/no to 1/0
     dataset[yes_no_columns] = dataset[yes_no_columns].replace({'Yes': 1, 'No': 0})
-    # Drop unnecessary columns if any
+
+    # Dropping Unnecessary columns
     if 'Name of Student' in dataset.columns and 'Roll No.' in dataset.columns:
         dataset = dataset.drop(columns=['Name of Student', 'Roll No.'])
     # Remove outliers based on Placement Package
@@ -140,18 +110,9 @@ def getGraphs():
     plt.savefig("pairplot_numerical_features.png")
     plt.close()
 
-
 def input_and_ml():
-    # X, y = load_and_preprocess_data()
-    
     st.title("Campus Placement Predictor ")
-    st.markdown("**Welcome to Campus Placement Predictor**  \nEnter some information about you to get an estimate about you annual package which you can expect!!!")
-
-    encoding_dict = {"Computer Science" : [[0.0, 1.0, 0.0, 0.0]],
-                "Mechanical Engineering" : [[0.0, 0.0, 0.0, 1.0]],
-                "Electrical Engineering" : [[0.0, 0.0, 1.0, 0.0]],
-                "Civil Engineering" : [[1.0, 0.0, 0.0, 0.0]]}
-    
+    st.markdown("**Welcome to Campus Placement Predictor**  \nEnter some information about you to get an estimate about you annual package which you can expect!!!")    
     set_none = st.checkbox("Do you know the interview room temperature?")
     # Create a form
     with st.form(key='my_form'):
@@ -250,14 +211,10 @@ def input_and_ml():
 
             progressBar.progress(10, "Handling missing values...")
             sleep(0.5)
-            # Handling null values 
+
+            # Handling null values using joblib's simple imputer
             mean_imp = load('imp_mean.joblib')
             mode_imp = load('imp_mode.joblib')
-            
-            # imputer_mode = SimpleImputer(missing_values=np.nan, strategy='most_frequent')
-            # imputer_mean = SimpleImputer(missing_values=np.nan, strategy='mean')
-            # imputer_mode.fit(X[:, 2:12])
-            # imputer_mean.fit(X[:, [0, 1, 12, 13, 14]])
             x_values = np.where(x_values == None, np.nan, x_values)
             x_values[:, 2:12] = mode_imp.transform(x_values[:, 2:12])
             x_values[:, [0, 1, 12, 13, 14]] = mean_imp.transform(x_values[:, [0, 1, 12, 13, 14]])
@@ -265,93 +222,28 @@ def input_and_ml():
             progressBar.progress(20, "Encoding data...")
             sleep(0.5)
 
-            # one hot encoding of dataset and input
-            # ct = ColumnTransformer(transformers=[('encoder', OneHotEncoder(), [15])], remainder='passthrough')
-            # X = np.array(ct.fit_transform(X))
-
-            # last_column = x_values[0, -1]
-            # if last_column in encoding_dict:
-            #     one_hot_encoded = np.array(encoding_dict[last_column])
-            #     x_values_reshaped = x_values.reshape(1, -1)
-            #     x_values = np.concatenate((one_hot_encoded, x_values_reshaped), axis=1)
-            #     x_values = x_values[:, :-1]
-
+            # Encoding categorical variables using joblib's OneHotEncoder
             ct = load('column_transformer.joblib')
             x_values = np.array(ct.transform(x_values))
 
             progressBar.progress(30, "Performing Feature Scaling...")
             sleep(0.5)
 
-            # feature scaling
-                # on X
-            # x_values = x_values.astype(float)
+            # feature scaling values using joblib's standardScaler
             columns_to_scale = [4, 5, 16, 17, 18]
-            # sc = StandardScaler()
-            # X_to_scale = X[:, columns_to_scale]
-            # X_rest = np.delete(X, columns_to_scale, axis=1)
-            # X_scaled = sc.fit_transform(X_to_scale)
-            # X[:, columns_to_scale] = X_scaled
-                # on input
-            
-            # x_values_to_scale = x_values[:, columns_to_scale]
-            # x_values_rest = np.delete(x_values, columns_to_scale, axis=1)
-            # x_values_scaled = sc.transform(x_values_to_scale)
-            # x_values[:, columns_to_scale] = x_values_scaled
             scale_x = load('x_scaler.joblib')
             x_values[:, columns_to_scale] = scale_x.transform(x_values[:, columns_to_scale])
 
-
-            # print("input - ", x_values[0])
-            # print("original - ", X[0])
-
             progressBar.progress(50, "Creating ML algorithm...")
-            sleep(0.2)
-            # gradient boosting 
-            # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.20, random_state = 42)
-
+            sleep(0.7)
 
             progressBar.progress(70, "Calculating values...")
-
-            #test
-            # best_gbr = GradientBoostingRegressor(n_estimators=100, learning_rate=0.1, max_features=5, random_state=100)
-            # best_gbr.fit(X_train, y_train)
-
-            # y_pred = best_gbr.predict(X_test)
-            # y_train_pred = best_gbr.predict(X_train)
-
-            # mse = mean_squared_error(y_test, y_pred)
-            # mse_train = mean_squared_error(y_train, y_train_pred)
-
-            # bias_squared = (np.mean(y_test) - np.mean(y_pred)) ** 2
-            # variance = np.var(y_pred)
-
-            # mae = mean_absolute_error(y_test, y_pred)
-            # r2 = r2_score(y_test, y_pred)
-            # cv_scores = cross_val_score(best_gbr, X_train, y_train, cv=5, scoring='neg_mean_squared_error')
-
-            # st.write(evaluation_mat)
+            sleep(0.3)
 
             progressBar.progress(85, "Almost there...")
-            sleep(0.2)
-
-            # evaluation_mat = {"Mean Squared Error" : mse,
-            #                 "Mean Absolute Error" : mae,
-            #                 "R-squared" : r2,
-            #                 "Cross-validated MSE" : -np.mean(cv_scores),
-            #                 "Bias Squared": bias_squared,
-            #                 "Variance": variance}
-            
-            # st.write(f'Mean Squared Error: {mse}')
-            # st.write(f'Mean Absolute Error: {mae}')
-            # st.write(f'R-squared: {r2}')
-            # st.write(f'Cross-validated MSE: {-np.mean(cv_scores)}')
-            # st.write(f'Bias Squared: {bias_squared}')
-            # st.write(f'Variance: {variance}')
+            sleep(0.6)
 
             progressBar.progress(100, "DONE!!!...")
-
-            # st.write("Shape of x_values before prediction:", x_values.shape)
-            # st.write("x_val after hot encoding", x_values[0])
 
             # Predicting Value 
             scale_y = load("y_scaler.joblib")
@@ -367,7 +259,8 @@ def input_and_ml():
 
             # Display the warning message in smaller text
             st.markdown(f"<p style='text-align: center; color: red; font-size: 14px;'>The values calculated can/may contain an error margin of ± {evaluation_mat['Mean Absolute Error']:.2f}.</p>", unsafe_allow_html=True)
-
+            st.markdown(f"<p style='text-align: center; color: #FFBF00; font-size: 10px;'>Please note that the generated value is intended for personal evaluation purposes only. It is not a definitive or guaranteed outcome. Actual results may vary.</p>", unsafe_allow_html=True)
+            
 def info_tab():
     st.title("Model Information")
     st.markdown(f"""
@@ -400,6 +293,7 @@ def info_tab():
 
     """)
 
+    # graphs and about graphs
     st.markdown("""
     ### **Visualizations**
 
@@ -491,8 +385,6 @@ def info_tab():
     - Some features (e.g., CGPA, DSA questions) emerge as stronger predictors, while others have limited impact.
     - The visualizations emphasize that while numerical performance is critical, other factors also play a role in determining placement outcomes.
     """)
-
-
 
 def main():
     # Create tabs

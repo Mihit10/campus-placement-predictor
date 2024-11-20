@@ -5,7 +5,7 @@ import seaborn as sns
 
 
 def getGraphs():
-    dataset = pd.read_csv("Optimized_Placement_Dataset_with_Noise.csv")
+    dataset = pd.read_csv("Placement_dataset.csv")
     yes_no_columns = [
         'Knows ML', 'Knows DSA', 'Knows Python', 'Knows JavaScript', 
         'Knows HTML', 'Knows CSS', 'Knows Cricket', 'Knows Dance', 
