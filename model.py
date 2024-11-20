@@ -25,10 +25,10 @@ evaluation_mat = {"Mean Squared Error" : 77.304,
 
 
 def load_and_preprocess_data():
-    dataset = pd.read_csv("Placements_Dataset.csv")
+    dataset = pd.read_csv("Optimized_Placement_Dataset_with_Noise.csv")
     # dataset = dataset.iloc[:50000, :]
     dataset = dataset.drop(columns=['Name of Student', 'Roll No.'])
-    dataset = dataset.dropna()
+    # dataset = dataset.dropna()
     dataset['Placement Package'] -= 4
     dataset['Placement Package'] = dataset['Placement Package'].apply(lambda x: np.random.uniform(1, 2) if x <= 0 else x)
     
@@ -69,6 +69,8 @@ def train_model(X, y):
     imputer_mean = SimpleImputer(missing_values=np.nan, strategy='mean')
     imputer_mode.fit(X[:, 2:12])
     imputer_mean.fit(X[:, [0, 1, 12, 13, 14]])
+    X[:, 2:12] = imputer_mode.transform(X[:, 2:12])
+    X[:, [0, 1, 12, 13, 14]] = imputer_mean.transform(X[:, [0, 1, 12, 13, 14]])
     joblib.dump(imputer_mode, 'imp_mode.joblib')
     joblib.dump(imputer_mean, 'imp_mean.joblib')
     
@@ -76,12 +78,16 @@ def train_model(X, y):
     # one hot encoding
     ct = ColumnTransformer(transformers=[('encoder', OneHotEncoder(), [15])], remainder='passthrough')
     X = np.array(ct.fit_transform(X))
+    joblib.dump(ct, 'column_transformer.joblib')
+    print("Shape of X after hot encode:", X.shape)
+    print(X[0])
+
 
     # Train-test split
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.20, random_state = 42)
 
     # Step 2: Scale features
-    columns_to_scale = [0, 1, 2, 3, 4]  # Adjust based on your feature indices
+    columns_to_scale = [4, 5, 16, 17, 18]  # Adjust based on your feature indices
     xsc = StandardScaler()
     X_train[:, columns_to_scale] = xsc.fit_transform(X_train[:, columns_to_scale])
     X_test[:, columns_to_scale] = xsc.transform(X_test[:, columns_to_scale])
@@ -142,14 +148,14 @@ def train_model(X, y):
                     "Bias Squared": str(bias_squared_formatted),
                     "Variance": float(variance)}
 
-    import matplotlib.pyplot as plt
+    # import matplotlib.pyplot as plt
 
-    feature_importances = best_gbr.feature_importances_
-    plt.barh(range(len(feature_importances)), feature_importances)
-    plt.xlabel('Feature Importance')
-    plt.ylabel('Feature Index')
-    plt.title('Feature Importance from Gradient Boosting')
-    plt.show()
+    # feature_importances = best_gbr.feature_importances_
+    # plt.barh(range(len(feature_importances)), feature_importances)
+    # plt.xlabel('Feature Importance')
+    # plt.ylabel('Feature Index')
+    # plt.title('Feature Importance from Gradient Boosting')
+    # plt.show()
 
     # Save the model
     joblib.dump(best_gbr, 'placement_model.joblib')
@@ -160,6 +166,8 @@ def train_model(X, y):
 def main():
     save_evaluation_metrics(evaluation_mat)
     X, y = load_and_preprocess_data()
+    print("Shape of X before prediction:", X.shape)
+
     evaluation_metrics = train_model(X, y)
     save_evaluation_metrics(evaluation_metrics)
 
