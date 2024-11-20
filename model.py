@@ -28,7 +28,6 @@ def load_and_preprocess_data():
     dataset = pd.read_csv("Placement_dataset.csv")
     # dataset = dataset.iloc[:50000, :]
     dataset = dataset.drop(columns=['Name of Student', 'Roll No.'])
-    # dataset = dataset.dropna()
     dataset['Placement Package'] -= 4
     dataset['Placement Package'] = dataset['Placement Package'].apply(lambda x: np.random.uniform(1, 2) if x <= 0 else x)
     
@@ -90,7 +89,7 @@ def train_model(X, y):
     joblib.dump(ysc, 'y_scaler.joblib')
 
     # Training the model
-    best_gbr = GradientBoostingRegressor(n_estimators=80, min_samples_split=10, min_samples_leaf=4, max_depth=3, learning_rate=0.1, max_features=None, random_state=100)
+    best_gbr = GradientBoostingRegressor(n_estimators=120, min_samples_split=10, min_samples_leaf=4, max_depth=4, learning_rate=0.1, max_features=6, random_state=100)
     best_gbr.fit(X_train, y_train) 
 
     # Predicting Y 

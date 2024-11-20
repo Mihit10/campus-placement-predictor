@@ -1,1 +1,1 @@
-{"Mean Squared Error": 2.6415314689453617, "Mean Absolute Error": 0.6131885866218791, "R-squared": 0.9413798164389063, "Cross-validated MSE": 0.06019845686657005, "Bias Squared": "52.073 x 10^-6", "Variance": 40.7749239128455}
+{"Mean Squared Error": 2.596509050419182, "Mean Absolute Error": 0.5852282399784576, "R-squared": 0.9423793625120981, "Cross-validated MSE": 0.059511149945047845, "Bias Squared": "90.821 x 10^-6", "Variance": 42.15258147316233}
